@@ -1,0 +1,26 @@
+{
+    "a": "a value",
+    "b": "b value",
+    "c": {
+        "$ref": "#/path/to/c"
+    },
+    "d": [
+        {"$ref": "#/path/to/d_0"},
+        "d1",
+        {"$ref": "#/path/to/d_2"}
+    ],
+    "e": {
+        "f": {
+            "g": {"$ref": "#/path/to/g"},
+            "h": "h value"
+        }
+    },
+    "path":{
+        "to":{
+            "c": "c value",
+            "d_0": "d0",
+            "d_2": "d2",
+            "g": "g value"
+        }
+    }
+}
