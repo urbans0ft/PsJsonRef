@@ -1,13 +1,34 @@
 function Get-JsonRefValue
 {
-    [CmdletBinding()]
+    [CmdletBinding(DefaultParameterSetName='ref-only')]
     param(
-        [PSCustomObject]$Json,
-        [string]$Ref
+        [Parameter(Mandatory,Position=0,ParameterSetName='ref-only')]
+        [Parameter(Mandatory,Position=0,ParameterSetName='ref-from-obj')]
+        [string]$Ref,
+        [Parameter(Mandatory,Position=1,ParameterSetName='ref-from-obj')]
+        [PSCustomObject]$Json
     )
-    $psRef = "`$Json$($Ref -replace '#?\/([^\/]+)', '.''$1''')"
+    if (-Not ($Ref -match '^(?<file>[^#]*)(?<ref>#.*)$')) {
+        throw "'$Ref does not match regex.'"
+    }
+    $file   = $Matches['file']
+    $relRef = $Matches['ref']
+    if ($PSCmdlet.ParameterSetName -eq 'ref-only') {
+        
+        if ([string]::IsNullOrEmpty($file)) {
+            throw "`$Ref does not contain a file name."
+        }
+        if (-Not ([System.IO.File]::Exists($file))) {
+            throw "File '$file' not found!"
+        }
+        $Json = Get-Content $file -Raw | ConvertFrom-Json
+    }
+    Write-Verbose "JSON: $Json"
+    $psRef = "`$Json$($relRef -replace '#?\/([^\/]+)', '.''$1''')"
     Write-Verbose "$Ref -> $psRef"
-    Invoke-Expression $psRef
+    $value = Invoke-Expression $psRef
+    Write-Verbose "Invoke-Expression `$psRef => $value"
+    $value
 }
 
 function Resolve-JsonRefValue
@@ -25,7 +46,7 @@ function Resolve-JsonRefValue
                 if ($obj.Value.psobject.Properties.Name -contains '$ref') {
                     Write-Verbose "$obj contains `$ref."
                     Write-Verbose "$($obj.Value.'$ref')"
-                    $value = Get-JsonRefValue $Json $($obj.Value.'$ref')
+                    $value = Get-JsonRefValue $($obj.Value.'$ref')
                     Write-Verbose "$obj becomes $value"
                     $obj.Value = $value
                 }
@@ -42,9 +63,14 @@ function Resolve-JsonRefValue
                 $obj.Value | %{
                     $arrIdx++
                     if ($_.psobject.Properties.Name -contains '$ref') {
-                        $value = Get-JsonRefValue $Json $($_.'$ref')
+                        $value = Get-JsonRefValue $($_.'$ref')
                         Write-Verbose "$_ [$arrIdx] should become $value"
                         $replacements += @{'Index' = $arrIdx; 'Value' = $value}
+                    }
+                    else
+                    {
+                        Write-Verbose "Recursion for $_"
+                        Resolve-JsonRefValue $_
                     }
                 }
                 $replacements | %{
