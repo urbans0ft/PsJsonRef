@@ -87,3 +87,43 @@ function Resolve-JsonRefValue
         } 
     }
 }
+
+function Resolve-JsonRefFile
+{
+    [OutputType([PSCustomObject[]])]
+    [CmdletBinding()]
+    param(
+        [Parameter(ValueFromPipeline,Mandatory)]
+        [System.IO.FileInfo]$File
+    )
+    begin
+    {
+        $jsonObjects = @()
+    }
+    process {
+        if (-Not (Test-Path $File))
+        {
+            throw "File '$($File.FullName)' not found."
+        }
+        $fileDir          = Split-Path $File -Parent
+        $currentDirectory = [System.IO.Directory]::GetCurrentDirectory()
+        [System.IO.Directory]::SetCurrentDirectory($fileDir)
+        try
+        {
+            $json = Get-Content $file.FullName -Encoding utf8NoBOM | ConvertFrom-Json
+            Resolve-JsonRefValue $json
+            $jsonObjects += $json
+        }
+        catch
+        {
+            throw $_.Exception
+        }
+        finally {
+            [System.IO.Directory]::SetCurrentDirectory($currentDirectory)
+        }
+    }
+    end
+    {
+        $jsonObjects
+    }
+}
