@@ -8,6 +8,8 @@ function Get-JsonRefValue
         [Parameter(Mandatory,Position=1,ParameterSetName='ref-from-obj')]
         [PSCustomObject]$Json
     )
+    $currentDirectory = [System.IO.Directory]::GetCurrentDirectory()
+    [System.IO.Directory]::SetCurrentDirectory($PWD)
     if (-Not ($Ref -match '^(?<file>[^#]*)(?<ref>#.*)$')) {
         throw "'$Ref does not match regex.'"
     }
@@ -28,6 +30,7 @@ function Get-JsonRefValue
     Write-Verbose "$Ref -> $psRef"
     $value = Invoke-Expression $psRef
     Write-Verbose "Invoke-Expression `$psRef => $value"
+    [System.IO.Directory]::SetCurrentDirectory($currentDirectory)
     $value
 }
 
